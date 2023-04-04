@@ -51,6 +51,11 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             }
         }
     }
+    
+    // MARK: - Core Data Delete support
+    func deleteContext() {
+        saveContext()
+    }
 
 }
 

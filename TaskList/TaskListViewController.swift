@@ -8,7 +8,7 @@
 import UIKit
 import CoreData
 
-class TaskListViewController: UITableViewController {
+final class TaskListViewController: UITableViewController {
     
     private let cellID = "task"
     private var taskList: [Task] = []
@@ -28,7 +28,7 @@ class TaskListViewController: UITableViewController {
     }
     
     private func fetchData() {
-        let fetchRequest = Task.fetchRequest()
+        let fetchRequest = Task.fetchRequest() // запрос к БД
         
         do {
             taskList = try viewContext.fetch(fetchRequest)
@@ -68,6 +68,12 @@ class TaskListViewController: UITableViewController {
             }
         }
     }
+    
+    private func delete(task: Task) {
+        viewContext.delete(task)
+//        saveContext()
+    }
+    
 }
 
 // MARK: - Setup UI
@@ -109,4 +115,29 @@ extension TaskListViewController {
         cell.contentConfiguration = content
         return cell
     }
+    
+    override func tableView(_ tableView: UITableView, commit editingStyle: UITableViewCell.EditingStyle, forRowAt indexPath: IndexPath) {
+        
+        if editingStyle == .delete {
+            viewContext.delete(taskList[indexPath.row])
+            taskList.remove(at: indexPath.row)
+            tableView.deleteRows(at: [indexPath], with: .automatic)
+        }
+        if viewContext.hasChanges {
+            do {
+                try viewContext.save()
+            } catch {
+                print(error)
+            }
+        }
+    }
+    
+    override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        tableView.deselectRow(at: indexPath, animated: true)
+
+        let task = taskList[indexPath.row]
+
+        showAlert(withTitle: "Edit Task", andMessage: "What do you want to do editing?")
+            tableView.reloadData()
+        }
 }
