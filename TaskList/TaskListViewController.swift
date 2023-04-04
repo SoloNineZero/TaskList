@@ -48,7 +48,6 @@ final class TaskListViewController: UITableViewController {
         let saveAction = UIAlertAction(title: "Save Task", style: .default) { _ in
             guard let task = alert.textFields?.first?.text, !task.isEmpty else { return }
             completion(task)
-//            self?.save(task)
         }
         let cancelAction = UIAlertAction(title: "Cancel", style: .destructive)
         alert.addAction(saveAction)
