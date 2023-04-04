@@ -6,14 +6,13 @@
 //
 
 import UIKit
-import CoreData
 
 final class TaskListViewController: UITableViewController {
     
     private let cellID = "task"
     private var taskList: [Task] = []
     
-    private let viewContext = (UIApplication.shared.delegate as! AppDelegate).persistentContainer.viewContext
+    private let storageManager = StorageManager.shared
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -28,18 +27,19 @@ final class TaskListViewController: UITableViewController {
             withTitle: "New Task",
             andMessage: "What do you want to do?",
             descriptionTask: ""
-        ) { result in
-            self.save(result)
+        ) { [weak self] result in
+            self?.save(result)
         }
     }
     
     private func fetchData() {
-        let fetchRequest = Task.fetchRequest() // запрос к БД
-        
-        do {
-            taskList = try viewContext.fetch(fetchRequest)
-        } catch {
-            print(error)
+        storageManager.fetchData { [weak self] result in
+            switch result {
+            case .success(let tasks):
+                self?.taskList = tasks
+            case .failure(let error):
+                print(error.localizedDescription)
+            }
         }
     }
     
@@ -59,33 +59,14 @@ final class TaskListViewController: UITableViewController {
         present(alert, animated: true)
     }
     
-    private func edit(_ task: Task, newValue: String){
-        task.title = newValue
-        
-        saveTask()
-        tableView.reloadData()
-    }
-    
     private func save(_ taskName: String) {
-        let task = Task(context: viewContext)
-        task.title = taskName
-        taskList.append(task)
-        
-        let indexPath = IndexPath(row: taskList.count - 1, section: 0)
-        tableView.insertRows(at: [indexPath], with: .automatic)
-        
-        saveTask()
-    }
-    
-    private func saveTask() {
-        if viewContext.hasChanges {
-            do {
-                try viewContext.save()
-            } catch {
-                print(error)
-            }
+        storageManager.saveTask(taskName: taskName) { [weak self] task in
+            self?.taskList.append(task)
+            self?.tableView.insertRows(at: [IndexPath(row: (self?.taskList.count ?? 0) - 1, section: 0) ], with: .automatic)
         }
     }
+    
+    
 }
 
 // MARK: - Setup UI
@@ -130,12 +111,13 @@ extension TaskListViewController {
     
     override func tableView(_ tableView: UITableView, commit editingStyle: UITableViewCell.EditingStyle, forRowAt indexPath: IndexPath) {
         
+        let task = taskList[indexPath.row]
+        
         if editingStyle == .delete {
-            viewContext.delete(taskList[indexPath.row])
             taskList.remove(at: indexPath.row)
+            storageManager.delete(task: task)
             tableView.deleteRows(at: [indexPath], with: .automatic)
         }
-        saveTask()
     }
     
     override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
@@ -146,8 +128,9 @@ extension TaskListViewController {
             withTitle: "Edit Task",
             andMessage: "What do you want to do editing?",
             descriptionTask: taskList[indexPath.row].title ?? ""
-        ) { result in
-            self.edit(task, newValue: result)
+        ) { [weak self] result in
+            self?.storageManager.edit(task: task, newNameTask: result)
+            self?.tableView.reloadData()
         }
     }
 }
